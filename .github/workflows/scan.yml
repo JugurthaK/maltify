@@ -1,0 +1,112 @@
+name: maltify-scan
+run-name: "maltify-scan ${{ inputs.target_repo }} [${{ inputs.correlation_id }}]"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: "Target repository (owner/repo)"
+        required: true
+        type: string
+      target_ref:
+        description: "Branch, tag, or commit to scan (empty = default branch)"
+        required: false
+        type: string
+        default: ""
+      correlation_id:
+        description: "Client-generated UUID used to correlate the dispatched run"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target_repo }}
+          ref: ${{ inputs.target_ref }}
+          token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
+          path: target
+      - name: Record scanned commit
+        run: |
+          cd target
+          echo "{\"target_repo\":\"${{ inputs.target_repo }}\",\"commit_sha\":\"$(git rev-parse HEAD)\"}" > ../meta.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scan-meta
+          path: meta.json
+
+  opengrep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target_repo }}
+          ref: ${{ inputs.target_ref }}
+          token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
+          path: target
+      - name: Install opengrep
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
+          echo "$HOME/.opengrep/cli/latest" >> "$GITHUB_PATH"
+      - name: Run opengrep SAST scan
+        run: |
+          opengrep scan --config auto --sarif --output opengrep.sarif target/ || true
+          # Guarantee a valid SARIF artifact even if the scan crashed
+          [ -s opengrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > opengrep.sarif
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sarif-opengrep
+          path: opengrep.sarif
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target_repo }}
+          ref: ${{ inputs.target_ref }}
+          token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
+          path: target
+      - name: Run Trivy (SCA + IaC)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: target
+          scanners: vuln,misconfig
+          format: sarif
+          output: trivy.sarif
+          exit-code: "0"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sarif-trivy
+          path: trivy.sarif
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repo (full history)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.target_repo }}
+          ref: ${{ inputs.target_ref }}
+          token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
+          path: target
+          fetch-depth: 0
+      - name: Run GitLeaks secret scan
+        run: |
+          docker run --rm -v "$PWD/target":/repo ghcr.io/gitleaks/gitleaks:v8.21.2 \
+            detect --source /repo --report-format sarif --report-path /repo/gitleaks.sarif --exit-code 0
+          cp target/gitleaks.sarif gitleaks.sarif
+          [ -s gitleaks.sarif ] || echo '{"version":"2.1.0","runs":[]}' > gitleaks.sarif
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sarif-gitleaks
+          path: gitleaks.sarif

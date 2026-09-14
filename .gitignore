@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.DS_Store
+coverage/
+fixtures/maltify-fixture/repo/
