@@ -1,4 +1,9 @@
 FROM node:22-slim AS build
+# Toolchain for node-gyp: better-sqlite3 compiles from source when no
+# prebuilt binary matches the platform (e.g. linux/arm64).
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@10
 WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
