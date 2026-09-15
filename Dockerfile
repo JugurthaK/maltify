@@ -12,9 +12,10 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm -r build
 
 FROM node:22-slim
-# curl for container health checks (Coolify and friends exec it in-container).
+# curl + wget for container health checks — platforms exec one of them
+# in-container (Coolify's built-in check uses wget; ours uses curl).
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl \
+  && apt-get install -y --no-install-recommends curl wget \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 # The CLI bundle inlines the workspace packages (tsup noExternal) but still
