@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ inputs.target_repo }}
           ref: ${{ inputs.target_ref }}
@@ -36,7 +36,7 @@ jobs:
         run: |
           cd target
           echo "{\"target_repo\":\"${{ inputs.target_repo }}\",\"commit_sha\":\"$(git rev-parse HEAD)\"}" > ../meta.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: scan-meta
           path: meta.json
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ inputs.target_repo }}
           ref: ${{ inputs.target_ref }}
@@ -60,7 +60,7 @@ jobs:
           opengrep scan --config auto --sarif --output opengrep.sarif target/ || true
           # Guarantee a valid SARIF artifact even if the scan crashed
           [ -s opengrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > opengrep.sarif
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sarif-opengrep
           path: opengrep.sarif
@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ inputs.target_repo }}
           ref: ${{ inputs.target_ref }}
@@ -84,7 +84,7 @@ jobs:
           format: sarif
           output: trivy.sarif
           exit-code: "0"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sarif-trivy
           path: trivy.sarif
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout target repo (full history)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ inputs.target_repo }}
           ref: ${{ inputs.target_ref }}
@@ -106,7 +106,7 @@ jobs:
             detect --source /repo --report-format sarif --report-path /repo/gitleaks.sarif --exit-code 0
           cp target/gitleaks.sarif gitleaks.sarif
           [ -s gitleaks.sarif ] || echo '{"version":"2.1.0","runs":[]}' > gitleaks.sarif
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sarif-gitleaks
           path: gitleaks.sarif
