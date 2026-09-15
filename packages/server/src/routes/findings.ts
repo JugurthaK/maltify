@@ -6,7 +6,7 @@ import {
   type Db,
   type Finding,
 } from "@maltify/core";
-import { and, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 
 const SEVERITY_ORDER = sql.raw(
@@ -15,6 +15,7 @@ const SEVERITY_ORDER = sql.raw(
 
 interface FindingsQuery {
   repo_id?: string;
+  scan_id?: string;
   scanner?: string;
   severity?: string;
   status?: string;
@@ -32,6 +33,13 @@ export function registerFindingRoutes(app: FastifyInstance, db: Db): void {
 
     const conditions: SQL[] = [];
     if (q.repo_id) conditions.push(eq(findings.repoId, Number(q.repo_id)));
+    if (q.scan_id) {
+      // Findings present in that scan: first seen at or before it, last seen
+      // at or after it (approximation without a per-scan junction table).
+      const scanId = Number(q.scan_id);
+      conditions.push(lte(findings.firstSeenScanId, scanId));
+      conditions.push(gte(findings.lastSeenScanId, scanId));
+    }
     if (q.scanner) conditions.push(eq(findings.scanner, q.scanner as Finding["scanner"]));
     if (q.severity) conditions.push(eq(findings.severity, q.severity as Finding["severity"]));
     if (q.status) conditions.push(eq(findings.status, q.status as Finding["status"]));

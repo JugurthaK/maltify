@@ -92,6 +92,7 @@ export default function RepoDetail() {
               <th className="px-4 py-2.5 font-medium">New</th>
               <th className="px-4 py-2.5 font-medium">Resolved</th>
               <th className="px-4 py-2.5 font-medium">Open</th>
+              <th className="px-4 py-2.5 font-medium"></th>
             </tr>
           </thead>
           <tbody>
@@ -115,6 +116,16 @@ export default function RepoDetail() {
                 <td className="px-4 py-2.5">{scan.countsNew ?? "—"}</td>
                 <td className="px-4 py-2.5">{scan.countsResolved ?? "—"}</td>
                 <td className="px-4 py-2.5">{scan.countsOpen ?? "—"}</td>
+                <td className="px-4 py-2.5">
+                  {scan.status === "completed" && (
+                    <Link
+                      to={`/findings?repo_id=${repo.id}&scan_id=${scan.id}`}
+                      className="text-xs text-accent hover:underline"
+                    >
+                      view findings →
+                    </Link>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

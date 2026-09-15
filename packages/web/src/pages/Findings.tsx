@@ -18,6 +18,7 @@ const FILTERS: { key: string; label: string; values: string[] }[] = [
 export default function Findings() {
   const [params, setParams] = useSearchParams();
   const page = Number(params.get("page") ?? 1);
+  const { data: repos } = useQuery({ queryKey: ["repos"], queryFn: () => api.repos() });
 
   const queryParams: Record<string, string> = { page: String(page), page_size: "50" };
   for (const f of FILTERS) {
@@ -25,6 +26,7 @@ export default function Findings() {
     if (v) queryParams[f.key] = v;
   }
   if (params.get("repo_id")) queryParams.repo_id = params.get("repo_id")!;
+  if (params.get("scan_id")) queryParams.scan_id = params.get("scan_id")!;
 
   const { data, isLoading } = useQuery({
     queryKey: ["findings", queryParams],
@@ -44,6 +46,38 @@ export default function Findings() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={params.get("repo_id") ?? ""}
+          onChange={(e) => {
+            // A scan belongs to one repo — changing repo clears the scan filter.
+            const next = new URLSearchParams(params);
+            if (e.target.value) next.set("repo_id", e.target.value);
+            else next.delete("repo_id");
+            next.delete("scan_id");
+            next.delete("page");
+            setParams(next);
+          }}
+          className="rounded-md border border-line bg-surface-1 px-2 py-1.5 text-sm text-ink-2"
+        >
+          <option value="">Repository: all</option>
+          {repos?.map((r) => (
+            <option key={r.id} value={String(r.id)}>
+              Repository: {r.fullName}
+            </option>
+          ))}
+        </select>
+        {params.get("scan_id") && (
+          <span className="flex items-center gap-1.5 rounded-md border border-line bg-surface-2 px-2 py-1.5 text-sm text-ink-2">
+            scan #{params.get("scan_id")}
+            <button
+              onClick={() => setFilter("scan_id", null)}
+              className="text-ink-3 hover:text-ink"
+              title="Clear scan filter"
+            >
+              ✕
+            </button>
+          </span>
+        )}
         {FILTERS.map((f) => (
           <select
             key={f.key}
