@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/dev.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.1.0",
