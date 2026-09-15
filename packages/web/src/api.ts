@@ -26,6 +26,8 @@ export interface Scan {
   repoId: number;
   workflowRunId: number | null;
   commitSha: string | null;
+  source: "dispatch" | "action";
+  ref: string | null;
   status: "dispatched" | "running" | "completed" | "failed";
   startedAt: string;
   finishedAt: string | null;
@@ -113,8 +115,30 @@ export interface TimelinePoint {
   countsOpen: number | null;
 }
 
+const TOKEN_KEY = "maltify_token";
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, init);
+  const token = getToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const res = await fetch(path, { ...init, headers });
+  if (res.status === 401) {
+    clearToken();
+    if (window.location.pathname !== "/login") {
+      window.location.assign("/login");
+    }
+    throw new Error("unauthorized");
+  }
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error ?? `${res.status} ${res.statusText}`);
@@ -123,6 +147,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  authCheck: () => request<{ ok: boolean }>("/api/auth/check"),
   repos: () => request<RepoSummary[]>("/api/repos"),
   repo: (id: number) =>
     request<RepoSummary & { scans: Scan[] }>(`/api/repos/${id}`),

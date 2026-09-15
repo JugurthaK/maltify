@@ -7,6 +7,7 @@ import "./index.css";
 import Dashboard from "./pages/Dashboard";
 import FindingDetailPage from "./pages/FindingDetail";
 import Findings from "./pages/Findings";
+import Login from "./pages/Login";
 import RepoDetail from "./pages/RepoDetail";
 
 const queryClient = new QueryClient({
@@ -14,6 +15,7 @@ const queryClient = new QueryClient({
 });
 
 const router = createBrowserRouter([
+  { path: "/login", element: <Login /> },
   {
     path: "/",
     element: <App />,

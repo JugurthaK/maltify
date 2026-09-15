@@ -84,6 +84,65 @@ pnpm maltify remediate <finding-id> # generates a fix and opens a PR
 For development: `pnpm --filter @maltify/server dev` (API) and
 `pnpm --filter @maltify/web dev` (frontend with proxy) in two terminals.
 
+## Scan from your own CI (composite action)
+
+Instead of central dispatch, any repo can run the same scanners in its own
+workflow and push results to a hosted maltify backend:
+
+```yaml
+# .github/workflows/maltify.yml in the target repo
+name: maltify
+on: [push]
+jobs:
+  maltify:
+    runs-on: ubuntu-latest # required (docker is used for GitLeaks)
+    concurrency: maltify-${{ github.ref }} # avoid out-of-order ingests
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so GitLeaks can scan past commits
+      - uses: <you>/maltify/action@v1
+        with:
+          api_url: https://your-maltify.example.com
+          api_token: ${{ secrets.MALTIFY_INGEST_TOKEN }}
+          # scanners: opengrep,trivy,gitleaks   # optional subset
+          # fail_on: high    # fail the job on NEW findings >= this severity
+```
+
+Set the `MALTIFY_INGEST_TOKEN` secret in the consumer repo to the same value
+as the server's `MALTIFY_INGEST_TOKEN` env var. Scans ingested this way show
+up with an `action` badge; central-dispatch scans show `dispatch`.
+
+Caveat: prefer one mode (action OR dispatch) per repo — opengrep's SARIF
+fingerprints can embed the scanned path, which differs between modes, so
+mixing them may double-count the same finding.
+
+## Hosting the backend
+
+The server is a single Node process with a SQLite file — deploy it anywhere
+with a persistent volume. A multi-stage `Dockerfile` is included:
+
+```sh
+docker build -t maltify .
+docker run -p 8790:8790 -v maltify-data:/data \
+  -e MALTIFY_API_TOKEN=$(openssl rand -hex 32) \
+  -e MALTIFY_INGEST_TOKEN=$(openssl rand -hex 32) \
+  maltify
+```
+
+- `MALTIFY_API_TOKEN` protects the UI and all API routes (the web app shows a
+  login screen asking for it). `MALTIFY_INGEST_TOKEN` protects `POST
+  /api/ingest`. Leave both unset for a local, open instance.
+- Health check endpoint: `GET /api/health` (public).
+- Fly.io: `fly launch --no-deploy`, `fly volumes create maltify_data`, mount
+  it at `/data` in fly.toml (`internal_port = 8790`), then
+  `fly secrets set MALTIFY_API_TOKEN=... MALTIFY_INGEST_TOKEN=...`.
+- To use qualify/remediate/rescan on the hosted instance, also set
+  `GITHUB_TOKEN`, `MALTIFY_REPO`, and your LLM key there; without them the
+  instance is ingest + dashboard only.
+- SQLite means one machine — do not scale horizontally.
+- Token changes require a server restart (env is read at startup).
+
 ## Testing with the fixture repo
 
 `fixtures/maltify-fixture/` is a deliberately vulnerable mini-app (SQLi, XSS,

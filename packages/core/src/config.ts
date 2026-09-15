@@ -19,6 +19,9 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   MALTIFY_DB_PATH: z.string().default("~/.maltify/maltify.db"),
   PORT: z.coerce.number().int().positive().default(8790),
+  HOST: z.string().default("127.0.0.1"),
+  MALTIFY_API_TOKEN: z.string().optional(),
+  MALTIFY_INGEST_TOKEN: z.string().optional(),
 });
 
 export type MaltifyConfig = z.infer<typeof envSchema> & {
@@ -62,11 +65,25 @@ export function getConfig(): MaltifyConfig {
   return cached;
 }
 
-/** Config for commands that only touch the local database. */
-export function getLocalConfig(): { dbPath: string; port: number } {
+/**
+ * Config for the server and commands that only touch the local database.
+ * Deliberately loose: hosted ingest must not require GITHUB_TOKEN etc.
+ */
+export function getLocalConfig(): {
+  dbPath: string;
+  port: number;
+  host: string;
+  apiToken: string | undefined;
+  ingestToken: string | undefined;
+} {
   const dbPath = resolve(
     expandHome(process.env.MALTIFY_DB_PATH ?? "~/.maltify/maltify.db"),
   );
-  const port = Number(process.env.PORT ?? 8790);
-  return { dbPath, port };
+  return {
+    dbPath,
+    port: Number(process.env.PORT ?? 8790),
+    host: process.env.HOST ?? "127.0.0.1",
+    apiToken: process.env.MALTIFY_API_TOKEN || undefined,
+    ingestToken: process.env.MALTIFY_INGEST_TOKEN || undefined,
+  };
 }

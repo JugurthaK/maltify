@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS scans (
   correlation_id TEXT NOT NULL,
   commit_sha TEXT,
   status TEXT NOT NULL CHECK (status IN ('dispatched','running','completed','failed')),
+  source TEXT NOT NULL DEFAULT 'dispatch' CHECK (source IN ('dispatch','action')),
+  ref TEXT,
   started_at TEXT NOT NULL,
   finished_at TEXT,
   error TEXT,
@@ -103,6 +105,24 @@ CREATE INDEX IF NOT EXISTS remediations_finding ON remediations(finding_id);
 
 const cache = new Map<string, Db>();
 
+/**
+ * Additive migration for databases created before a column existed —
+ * CREATE TABLE IF NOT EXISTS never alters existing tables. CHECK constraints
+ * are only present in the DDL for fresh databases; app code + drizzle types
+ * enforce the enum on migrated ones.
+ */
+function ensureColumn(
+  sqlite: Database.Database,
+  table: string,
+  column: string,
+  ddl: string,
+): void {
+  const cols = sqlite.pragma(`table_info(${table})`) as { name: string }[];
+  if (!cols.some((c) => c.name === column)) {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  }
+}
+
 export function openDb(dbPath: string): Db {
   const existing = cache.get(dbPath);
   if (existing) return existing;
@@ -111,6 +131,8 @@ export function openDb(dbPath: string): Db {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
   sqlite.exec(DDL);
+  ensureColumn(sqlite, "scans", "source", "source TEXT NOT NULL DEFAULT 'dispatch'");
+  ensureColumn(sqlite, "scans", "ref", "ref TEXT");
   const db = drizzle(sqlite, { schema }) as Db;
   cache.set(dbPath, db);
   return db;

@@ -12,6 +12,7 @@ export * from "./github/content.js";
 export * from "./github/pr.js";
 export * from "./scan/run-scan.js";
 export * from "./scan/reconcile.js";
+export * from "./scan/ingest.js";
 export * from "./llm/provider.js";
 export * from "./llm/schemas.js";
 export * from "./llm/context.js";

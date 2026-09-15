@@ -35,6 +35,9 @@ export const SCAN_STATUSES = [
 ] as const;
 export type ScanStatus = (typeof SCAN_STATUSES)[number];
 
+export const SCAN_SOURCES = ["dispatch", "action"] as const;
+export type ScanSource = (typeof SCAN_SOURCES)[number];
+
 export const REMEDIATION_STATUSES = [
   "generating",
   "patch_ready",
@@ -64,6 +67,8 @@ export const scans = sqliteTable("scans", {
   correlationId: text("correlation_id").notNull(),
   commitSha: text("commit_sha"),
   status: text("status", { enum: SCAN_STATUSES }).notNull(),
+  source: text("source", { enum: SCAN_SOURCES }).notNull().default("dispatch"),
+  ref: text("ref"),
   startedAt: text("started_at").notNull(),
   finishedAt: text("finished_at"),
   error: text("error"),

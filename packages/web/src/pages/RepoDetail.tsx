@@ -98,7 +98,19 @@ export default function RepoDetail() {
           <tbody>
             {repo.scans.map((scan) => (
               <tr key={scan.id} className="border-b border-line last:border-b-0">
-                <td className="px-4 py-2.5">#{scan.id}</td>
+                <td className="px-4 py-2.5">
+                  #{scan.id}
+                  <span
+                    className="ml-2 rounded bg-surface-2 px-1.5 py-0.5 text-xs text-ink-3"
+                    title={
+                      scan.source === "action"
+                        ? "Pushed by the maltify GitHub Action"
+                        : "Central workflow dispatch"
+                    }
+                  >
+                    {scan.source}
+                  </span>
+                </td>
                 <td className={`px-4 py-2.5 ${SCAN_STATUS_CLS[scan.status] ?? ""}`}>
                   {scan.status}
                   {scan.error && (
