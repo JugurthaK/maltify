@@ -76,7 +76,7 @@ jobs:
           token: ${{ secrets.TARGET_REPO_TOKEN || github.token }}
           path: target
       - name: Run Trivy (SCA + IaC)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: target
